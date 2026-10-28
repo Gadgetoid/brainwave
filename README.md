@@ -2,6 +2,12 @@
 
 A USB WiFi module for the SHARP Brain (PW-SH1, PW-SH2) running Windows CE from a pwsh2-boot card: our U-Boot loader and patched CE with the brainshell desktop, not yet published. The Brain's ROM has no USB host stack, so Brainwave is the host: the Brain runs RNDIS, and Brainwave gives it an address by DHCP, relays DNS and shares its WiFi connection. The Brainwave WiFi app on the Brain picks networks and updates the module's firmware over the same link.
 
+![Networks](docs/images/networks.png)
+
+| Details | Advanced |
+| --- | --- |
+| ![Details](docs/images/details.png) | ![Advanced](docs/images/advanced.png) |
+
 ## Bill of Materials
 
 | Part | Notes |
