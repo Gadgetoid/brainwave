@@ -22,6 +22,7 @@
 namespace {
 
 constexpr const wchar_t *window_class = L"BrainwaveWindow";
+constexpr WORD app_icon_resource = 1;
 constexpr const wchar_t *instance_mutex_name = L"Brainwave";
 constexpr const wchar_t *tab_setting = L"LastTab";
 constexpr DWORD pending_timeout_milliseconds = 20000;
@@ -394,6 +395,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPWSTR command_line, int) {
     WNDCLASSW class_description = {};
     class_description.lpfnWndProc = window_procedure;
     class_description.hInstance = instance;
+    class_description.hIcon = LoadIconW(instance, MAKEINTRESOURCEW(app_icon_resource));
     class_description.hbrBackground = GetSysColorBrush(COLOR_BTNFACE);
     class_description.lpszClassName = window_class;
     RegisterClassW(&class_description);

@@ -38,8 +38,9 @@ target_link_options(brainwave PRIVATE -T "${CMAKE_CURRENT_LIST_DIR}/exe.ld" --en
 set_property(TARGET brainwave APPEND PROPERTY LINK_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/exe.ld")
 target_link_libraries(brainwave PRIVATE jornada::headers jornada::runtime jornada::cxx_runtime jornada::winsock brain_import_commctrl brain_import_coredll)
 add_custom_command(TARGET brainwave POST_BUILD
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_LIST_DIR}/../tools/make-icon.py" "${CMAKE_BINARY_DIR}/brainwave.ico"
     COMMAND "${Python3_EXECUTABLE}" "${JORNADA_TOOLCHAIN}/tools/mkpe.py"
-        "$<TARGET_FILE:brainwave>" "${CMAKE_BINARY_DIR}/brainwave.exe" --ce-version=5.1
+        "$<TARGET_FILE:brainwave>" "${CMAKE_BINARY_DIR}/brainwave.exe" --ce-version=5.1 "--icon=${CMAKE_BINARY_DIR}/brainwave.ico"
     VERBATIM)
 
 add_executable(brainwave_power driver/brainwave_power.c)
