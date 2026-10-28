@@ -39,6 +39,8 @@ After that, copy `build/firmware/brainwave.bin` next to the app on the card and 
 
 On the card, `brainwave\` holds `brainwave.exe` and `bwpower.dll` from `build/ce/`, and optionally `brainwave.bin`. The Brain also needs `rndisfn.dll`, the RNDIS function driver from NXP's i.MX28 Windows CE EVK image, next to the app or in `\Windows`. It is not redistributable, so it is not included here.
 
+Releases (`brainwave-VERSION.zip`, built by CI from a `v*` tag) hold `card/brainwave/` ready to copy to the card and `firmware/` with both UF2s for the first flash.
+
 More: [docs/protocol.md](docs/protocol.md) (control protocol), [docs/hardware.md](docs/hardware.md) (power, USB and debugging), [ce/ReadMe.txt](ce/ReadMe.txt) (user guide).
 
 ## Licence

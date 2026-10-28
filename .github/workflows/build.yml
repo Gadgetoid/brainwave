@@ -1,0 +1,63 @@
+# Builds and tests the CE app and the firmware on every push; a v* tag that matches the firmware version makes a release.
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Submodules
+        run: |
+          git submodule update --init
+          git -C firmware/pico-sdk submodule update --init lib/cyw43-driver lib/lwip
+      - name: Packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib cmake ninja-build libusb-1.0-0-dev pkg-config zip
+      - name: Tests
+        run: make test
+      - name: CE toolchain
+        run: sh tools/ce-toolchain.sh "$RUNNER_TEMP/ce-toolchain"
+      - name: CE app
+        run: make ce JORNADA_TOOLCHAIN="$RUNNER_TEMP/ce-toolchain/jornada-72x-tools" JORNADA_LLVM_ROOT="$RUNNER_TEMP/ce-toolchain/llvm"
+      - name: Firmware
+        run: make firmware
+      - name: Check the tag matches the firmware version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: test "v$(make -s version)" = "$GITHUB_REF_NAME"
+      - name: Package
+        id: package
+        run: |
+          picotool=$(find build/firmware -type f -name picotool -perm -u+x | head -1)
+          echo "zip=$(make -s package PICOTOOL="$picotool" | tail -1)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: brainwave
+          path: ${{ steps.package.outputs.zip }}
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: brainwave
+          path: dist
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*.zip
