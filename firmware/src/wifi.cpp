@@ -122,6 +122,11 @@ void plan_auth(const settings::Network &network, const AccessPoint *seen) {
         auth_attempts[auth_attempt_count++] = CYW43_AUTH_WPA_TKIP_PSK;
         return;
     }
+    if (seen && seen->security == security_wep) {
+        auth_attempts[auth_attempt_count++] = CYW43_AUTH_WEP_OPEN_PSK;
+        auth_attempts[auth_attempt_count++] = CYW43_AUTH_WEP_SHARED_PSK;
+        return;
+    }
     auth_attempts[auth_attempt_count++] = CYW43_AUTH_WPA2_MIXED_PSK;
     auth_attempts[auth_attempt_count++] = CYW43_AUTH_WPA3_WPA2_AES_PSK;
 }
@@ -130,15 +135,54 @@ void set_outside(uint32_t address) {
     napt_set_outside_address(address);
 }
 
+int hex_digit(uint8_t character) {
+    if (character >= '0' && character <= '9') {
+        return character - '0';
+    }
+    if (character >= 'a' && character <= 'f') {
+        return character - 'a' + 10;
+    }
+    if (character >= 'A' && character <= 'F') {
+        return character - 'A' + 10;
+    }
+    return -1;
+}
+
+size_t wep_key_bytes(const settings::Network &network, uint8_t *key) {
+    size_t length = network.password_length;
+    if (length == 5 || length == 13) {
+        memcpy(key, network.password, length);
+        return length;
+    }
+    if (length != 10 && length != 26) {
+        return 0;
+    }
+    for (size_t index = 0; index < length; index += 2) {
+        int high = hex_digit(network.password[index]);
+        int low = hex_digit(network.password[index + 1]);
+        if (high < 0 || low < 0) {
+            return 0;
+        }
+        key[index / 2] = static_cast<uint8_t>(high << 4 | low);
+    }
+    return length / 2;
+}
+
 void start_attempt(uint32_t now) {
     char ssid[33] = {};
-    char password[65] = {};
     memcpy(ssid, target.ssid, target.ssid_length);
-    memcpy(password, target.password, target.password_length);
     uint32_t auth = auth_attempts[auth_attempt_index];
+    uint8_t key[settings::password_bytes];
+    size_t key_length = 0;
+    if (CYW43_AUTH_IS_WEP(auth)) {
+        key_length = wep_key_bytes(target, key);
+    } else if (auth != CYW43_AUTH_OPEN) {
+        key_length = target.password_length;
+        memcpy(key, target.password, key_length);
+    }
     log_line("wifi: connecting to %s (auth %08lx)", ssid, static_cast<unsigned long>(auth));
-    int result = cyw43_arch_wifi_connect_async(ssid, auth == CYW43_AUTH_OPEN ? nullptr : password, auth);
-    memset(password, 0, sizeof(password));
+    int result = cyw43_wifi_join(&cyw43_state, target.ssid_length, target.ssid, key_length, key, auth, nullptr, CYW43_CHANNEL_NONE);
+    memset(key, 0, sizeof(key));
     state = State::connecting;
     connect_started_ms = now;
     if (result) {

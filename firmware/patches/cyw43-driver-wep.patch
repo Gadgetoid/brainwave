@@ -1,0 +1,100 @@
+--- a/src/cyw43_ll.h
++++ b/src/cyw43_ll.h
+@@ -173,6 +173,9 @@
+ #define CYW43_AUTH_WPA2_MIXED_PSK (0x00400006)  ///< WPA2/WPA mixed authorisation
+ #define CYW43_AUTH_WPA3_SAE_AES_PSK  (0x01000004)   ///< WPA3 AES authorisation
+ #define CYW43_AUTH_WPA3_WPA2_AES_PSK (0x01400004)   ///< WPA2/WPA3 authorisation
++#define CYW43_AUTH_WEP_OPEN_PSK  (0x00000001)
++#define CYW43_AUTH_WEP_SHARED_PSK (0x00010001)
++#define CYW43_AUTH_IS_WEP(auth) (((auth) & 0xff) == 0x01)
+ //!\}
+ 
+ /*!
+--- a/src/cyw43_ll.c
++++ b/src/cyw43_ll.c
+@@ -206,6 +206,7 @@
+ #define WLC_SET_BAND (142)
+ #define WLC_GET_ASSOCLIST (159)
+ #define WLC_SET_WPA_AUTH (165)
++#define WLC_SET_KEY (45)
+ #define WLC_SET_VAR (263)
+ #define WLC_GET_VAR (262)
+ #define WLC_SET_WSEC_PMK (268)
+@@ -279,6 +280,13 @@
+ 
+ #define AUTH_TYPE_OPEN 0
+ #define AUTH_TYPE_SAE 3
++#define AUTH_TYPE_SHARED 1
++#define CRYPTO_ALGO_WEP1 1
++#define CRYPTO_ALGO_WEP128 3
++#define WL_PRIMARY_KEY 2
++#define WSEC_KEY_BYTES 164
++#define WSEC_KEY_ALGO_OFFSET 112
++#define WSEC_KEY_FLAGS_OFFSET 116
+ 
+ // management frame protection
+ #define MFP_NONE 0
+@@ -2064,6 +2072,11 @@
+         wpa_auth = CYW43_WPA_AUTH_PSK;
+     } else if (auth_type == CYW43_AUTH_WPA3_SAE_AES_PSK || auth_type == CYW43_AUTH_WPA3_WPA2_AES_PSK) {
+         wpa_auth = CYW43_WPA3_AUTH_SAE_PSK;
++    } else if (CYW43_AUTH_IS_WEP(auth_type)) {
++        wpa_auth = 0;
++        if (key_len != 5 && key_len != 13) {
++            return -CYW43_EINVAL;
++        }
+     } else {
+         // Unsupported auth_type (security) value.
+         return -CYW43_EINVAL;
+@@ -2080,8 +2093,9 @@
+     cyw43_set_ioctl_u32(self, WLC_SET_WSEC, auth_type & 0xff, WWD_STA_INTERFACE);
+ 
+     // supplicant variable
+-    CYW43_VDEBUG("Setting sup_wpa=%d\n", auth_type == 0 ? 0 : 1);
+-    cyw43_write_iovar_u32_u32(self, "bsscfg:sup_wpa", 0, auth_type == 0 ? 0 : 1, WWD_STA_INTERFACE);
++    uint32_t supplicant = (auth_type == 0 || CYW43_AUTH_IS_WEP(auth_type)) ? 0 : 1;
++    CYW43_VDEBUG("Setting sup_wpa=%d\n", supplicant);
++    cyw43_write_iovar_u32_u32(self, "bsscfg:sup_wpa", 0, supplicant, WWD_STA_INTERFACE);
+ 
+     // set the EAPOL version to whatever the AP is using (-1)
+     CYW43_VDEBUG("Setting sup_wpa2_eapver\n");
+@@ -2091,7 +2105,17 @@
+     CYW43_VDEBUG("Setting sup_wpa_tmo %d\n", CYW_EAPOL_KEY_TIMEOUT);
+     cyw43_write_iovar_u32_u32(self, "bsscfg:sup_wpa_tmo", 0, CYW_EAPOL_KEY_TIMEOUT, WWD_STA_INTERFACE);
+ 
+-    if (auth_type != CYW43_AUTH_OPEN && auth_type != CYW43_AUTH_WPA3_SAE_AES_PSK) {
++    if (CYW43_AUTH_IS_WEP(auth_type)) {
++        uint8_t wep_key[WSEC_KEY_BYTES];
++        memset(wep_key, 0, sizeof(wep_key));
++        cyw43_put_le32(wep_key, 0);
++        cyw43_put_le32(wep_key + 4, key_len);
++        memcpy(wep_key + 8, key, key_len);
++        cyw43_put_le32(wep_key + WSEC_KEY_ALGO_OFFSET, key_len == 5 ? CRYPTO_ALGO_WEP1 : CRYPTO_ALGO_WEP128);
++        cyw43_put_le32(wep_key + WSEC_KEY_FLAGS_OFFSET, WL_PRIMARY_KEY);
++        CYW43_VDEBUG("Setting WEP key %d\n", key_len);
++        cyw43_do_ioctl(self, SDPCM_SET, WLC_SET_KEY, sizeof(wep_key), wep_key, WWD_STA_INTERFACE);
++    } else if (auth_type != CYW43_AUTH_OPEN && auth_type != CYW43_AUTH_WPA3_SAE_AES_PSK) {
+         // wwd_wifi_set_passphrase
+         cyw43_put_le16(buf, key_len);
+         cyw43_put_le16(buf + 2, 1);
+@@ -2116,7 +2140,8 @@
+ 
+     // set auth type
+     CYW43_VDEBUG("Setting auth\n");
+-    cyw43_set_ioctl_u32(self, WLC_SET_AUTH, (wpa_auth == CYW43_WPA3_AUTH_SAE_PSK) ? AUTH_TYPE_SAE : AUTH_TYPE_OPEN, WWD_STA_INTERFACE);
++    uint32_t authentication = (wpa_auth == CYW43_WPA3_AUTH_SAE_PSK) ? AUTH_TYPE_SAE : (auth_type == CYW43_AUTH_WEP_SHARED_PSK ? AUTH_TYPE_SHARED : AUTH_TYPE_OPEN);
++    cyw43_set_ioctl_u32(self, WLC_SET_AUTH, authentication, WWD_STA_INTERFACE);
+     cyw43_write_iovar_u32(self, "mfp", (wpa_auth == CYW43_WPA2_AUTH_PSK || wpa_auth == CYW43_WPA3_AUTH_SAE_PSK) ? MFP_CAPABLE : MFP_NONE, WWD_STA_INTERFACE);
+ 
+     // set WPA auth mode
+--- a/src/cyw43_ctrl.c
++++ b/src/cyw43_ctrl.c
+@@ -652,7 +652,7 @@
+         // Will get EV_DEAUTH_IND if password is invalid
+         self->wifi_join_state = WIFI_JOIN_STATE_ACTIVE;
+ 
+-        if (auth_type == CYW43_AUTH_OPEN) {
++        if (auth_type == CYW43_AUTH_OPEN || CYW43_AUTH_IS_WEP(auth_type)) {
+             // For open security we don't need EV_PSK_SUP, so set that flag indicator now
+             self->wifi_join_state |= WIFI_JOIN_STATE_KEYED;
+         }

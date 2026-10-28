@@ -66,6 +66,10 @@ int row_count = 0;
 shown_cells shown[row_limit];
 int shown_count = -1;
 
+bool is_wep(const char *security) {
+    return !strcmp(security, "wep");
+}
+
 bool is_secured(const char *security) {
     return security[0] && strcmp(security, "open") && strcmp(security, "-");
 }
@@ -411,7 +415,7 @@ void send_disconnect() {
 
 void ask_password_and_join(const network_row &row) {
     wchar_t password[72] = L"";
-    if (!password_dialog(main_window, row.ssid, password, 72)) {
+    if (!password_dialog(main_window, row.ssid, is_wep(row.security), password, 72)) {
         return;
     }
     char password_hex[160];

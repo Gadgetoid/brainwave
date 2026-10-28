@@ -4,15 +4,37 @@ cmake_minimum_required(VERSION 3.20)
 set(PICO_BOARD pimoroni_pico_lipo2xl_w)
 set(PICO_BOARD_HEADER_DIRS "${CMAKE_CURRENT_LIST_DIR}/boards")
 set(PICO_SDK_PATH "${CMAKE_CURRENT_LIST_DIR}/pico-sdk")
-set(PICO_TINYUSB_PATH "${CMAKE_CURRENT_LIST_DIR}/tinyusb")
 
 include(pico_sdk_import.cmake)
 project(brainwave C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
+
+function(brainwave_patched_copy source patch destination)
+    file(SHA256 "${patch}" patch_hash)
+    set(stamp "${destination}/.brainwave-patch")
+    set(stamped_hash "")
+    if(EXISTS "${stamp}")
+        file(READ "${stamp}" stamped_hash)
+    endif()
+    if(NOT stamped_hash STREQUAL patch_hash)
+        file(REMOVE_RECURSE "${destination}")
+        file(COPY "${source}/" DESTINATION "${destination}" PATTERN ".git" EXCLUDE)
+        execute_process(COMMAND git apply "${patch}" WORKING_DIRECTORY "${destination}" COMMAND_ERROR_IS_FATAL ANY)
+        file(WRITE "${stamp}" "${patch_hash}")
+    endif()
+endfunction()
+
+brainwave_patched_copy("${CMAKE_CURRENT_LIST_DIR}/pico-sdk/lib/cyw43-driver" "${CMAKE_CURRENT_LIST_DIR}/patches/cyw43-driver-wep.patch"
+    "${CMAKE_BINARY_DIR}/cyw43-driver")
+brainwave_patched_copy("${CMAKE_CURRENT_LIST_DIR}/tinyusb" "${CMAKE_CURRENT_LIST_DIR}/patches/tinyusb-host-errors.patch"
+    "${CMAKE_BINARY_DIR}/tinyusb")
+set(PICO_CYW43_DRIVER_PATH "${CMAKE_BINARY_DIR}/cyw43-driver")
+set(PICO_TINYUSB_PATH "${CMAKE_BINARY_DIR}/tinyusb")
+
 pico_sdk_init()
 
-set(BRAINWAVE_VERSION "0.3.4")
+set(BRAINWAVE_VERSION "0.3.7")
 set(BRAINWAVE_TEST_HANG_AFTER_MS 0 CACHE STRING "Test only: stop feeding the watchdog after this many milliseconds (0 is off)")
 option(BRAINWAVE_DEBUG_FORWARD "Forward TCP 2100 on the WiFi address to the Brain's Debug Agent from boot" OFF)
 

@@ -23,10 +23,34 @@ constexpr const wchar_t *cancel_label = L"Cancel";
 
 struct dialog_request {
     const wchar_t *network;
+    bool wep;
     wchar_t *password;
     int password_characters;
     wchar_t prompt[128];
 };
+
+bool valid_wpa_password(const wchar_t *password) {
+    int length = lstrlenW(password);
+    return length >= minimum_password && length <= maximum_password;
+}
+
+bool valid_wep_key(const wchar_t *key) {
+    int length = lstrlenW(key);
+    if (length == 5 || length == 13) {
+        return true;
+    }
+    if (length != 10 && length != 26) {
+        return false;
+    }
+    for (int index = 0; index < length; index++) {
+        wchar_t character = key[index];
+        bool hex = (character >= L'0' && character <= L'9') || (character >= L'a' && character <= L'f') || (character >= L'A' && character <= L'F');
+        if (!hex) {
+            return false;
+        }
+    }
+    return true;
+}
 
 class template_writer {
 public:
@@ -136,9 +160,9 @@ BOOL CALLBACK dialog_procedure(HWND dialog, UINT message, WPARAM wparam, LPARAM 
         }
         case IDOK: {
             GetWindowTextW(GetDlgItem(dialog, edit_id), request->password, request->password_characters);
-            int length = lstrlenW(request->password);
-            if (length < minimum_password || length > maximum_password) {
-                MessageBoxW(dialog, L"WiFi passwords are 8 to 63 characters long.", dialog_title, MB_OK | MB_ICONEXCLAMATION);
+            if (!(request->wep ? valid_wep_key(request->password) : valid_wpa_password(request->password))) {
+                MessageBoxW(dialog, request->wep ? L"WEP keys are 5 or 13 characters, or 10 or 26 hexadecimal digits." : L"WPA passwords are 8 to 63 characters long.",
+                            dialog_title, MB_OK | MB_ICONEXCLAMATION);
                 SetFocus(GetDlgItem(dialog, edit_id));
                 return TRUE;
             }
@@ -156,7 +180,7 @@ BOOL CALLBACK dialog_procedure(HWND dialog, UINT message, WPARAM wparam, LPARAM 
 
 }
 
-bool password_dialog(HWND owner, const wchar_t *network, wchar_t *password, int password_characters) {
+bool password_dialog(HWND owner, const wchar_t *network, bool wep, wchar_t *password, int password_characters) {
     static WORD buffer[template_words];
     template_writer writer(buffer);
     writer.dword(WS_POPUP | WS_CAPTION | WS_SYSMENU | DS_MODALFRAME);
@@ -177,6 +201,7 @@ bool password_dialog(HWND owner, const wchar_t *network, wchar_t *password, int 
 
     dialog_request request = {};
     request.network = network;
+    request.wep = wep;
     request.password = password;
     request.password_characters = password_characters;
     wsprintfW(request.prompt, L"Enter the password for \"%s\". Brainwave remembers it for next time.", network);

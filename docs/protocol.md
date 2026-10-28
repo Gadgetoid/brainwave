@@ -59,7 +59,7 @@ Fields: signal in dBm, security (`open`, `wep`, `wpa`, `wpa2`), channel, saved (
 
 ### `join SSID PASSWORD`
 
-Saves the network and starts connecting; `PASSWORD` is `-` for an open network. Up to 8 networks are kept, the least recently used dropped first. Returns `ok` at once; poll `status` for the result.
+Saves the network and starts connecting; `PASSWORD` is `-` for an open network, and a WEP key is 5 or 13 characters or 10 or 26 hex digits. Up to 8 networks are kept, the least recently used dropped first. Returns `ok` at once; poll `status` for the result.
 
 ### `connect SSID`
 

@@ -1,0 +1,39 @@
+--- a/src/portable/raspberrypi/rp2040/hcd_rp2040.c
++++ b/src/portable/raspberrypi/rp2040/hcd_rp2040.c
+@@ -396,7 +396,9 @@
+ 
+   if (status & USB_INTS_ERROR_DATA_SEQ_BITS) {
+     usb_hw_clear->sie_status = USB_SIE_STATUS_DATA_SEQ_ERROR_BITS;
+-    panic("Data Seq Error \n");
++    if (epx->state == EPSTATE_ACTIVE) {
++      xfer_complete_isr(epx, XFER_RESULT_FAILED, false);
++    }
+   }
+ }
+ 
+--- a/src/portable/raspberrypi/rp2040/rp2040_usb.c
++++ b/src/portable/raspberrypi/rp2040/rp2040_usb.c
+@@ -118,7 +118,10 @@
+   const uint32_t current    = *buf_reg;
+   const uint32_t avail_mask = USB_BUF_CTRL_AVAIL | (USB_BUF_CTRL_AVAIL << 16);
+   if (current & value & avail_mask) {
+-    panic("buf_ctrl @ 0x%lX already available", (uintptr_t)buf_reg);
++    if (!rp2usb_is_host_mode()) {
++      panic("buf_ctrl @ 0x%lX already available", (uintptr_t)buf_reg);
++    }
++    *buf_reg = current & ~avail_mask;
+   }
+   *buf_reg = value & ~(USB_BUF_CTRL_AVAIL | (USB_BUF_CTRL_AVAIL << 16)); // write other bits first
+ 
+@@ -136,7 +139,10 @@
+ void __tusb_irq_path_func(bufctrl_write16)(io_rw_16 *buf_reg16, uint16_t value) {
+   const uint16_t current = *buf_reg16;
+   if (current & value & USB_BUF_CTRL_AVAIL) {
+-    panic("buf_ctrl @ 0x%lX already available", (uintptr_t)buf_reg16);
++    if (!rp2usb_is_host_mode()) {
++      panic("buf_ctrl @ 0x%lX already available", (uintptr_t)buf_reg16);
++    }
++    *buf_reg16 = current & (uint16_t)~USB_BUF_CTRL_AVAIL;
+   }
+   *buf_reg16 = value & (uint16_t)~USB_BUF_CTRL_AVAIL; // write other bits first
+ 

@@ -251,7 +251,7 @@ void handle_command(Connection &connection) {
         size_t ssid_length = 0;
         size_t password_length = 0;
         if (!decode_hex(words[1], ssid, sizeof(ssid), ssid_length) || !ssid_length ||
-            !decode_hex(words[2], password, sizeof(password), password_length) || (password_length && password_length < 8)) {
+            !decode_hex(words[2], password, sizeof(password), password_length) || (password_length && password_length < 5)) {
             append(connection, "error bad network or password\n");
         } else {
             wifi::join(ssid, ssid_length, password, password_length);

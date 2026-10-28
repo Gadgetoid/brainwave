@@ -20,6 +20,8 @@ The driver can also lower `VBUSVALID_TRSH` to 2.9 V and route it to the USB B-se
 - The status LED is on the CYW43. An LED ioctl during a WiFi join can block indefinitely, so the LED is left alone while joining.
 - In poll mode, packets arriving over WiFi are handled inside `cyw43_arch_poll`. CYW43 calls made from there (RSSI, BSSID, scan, join) deadlock, so the control service only records requests and `wifi::task` carries them out from the main loop.
 
+- cyw43-driver has no WEP support. [firmware/patches/cyw43-driver-wep.patch](../firmware/patches/cyw43-driver-wep.patch) adds open and shared key WEP to its join; CMake applies it to a copy of the driver in the build directory, so the submodule stays unmodified. The firmware tries open system first, then shared key.
+
 ## Debugging
 
 - UART0 (GP0 TX, 115200) carries the log.
