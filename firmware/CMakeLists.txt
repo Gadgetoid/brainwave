@@ -34,7 +34,7 @@ set(PICO_TINYUSB_PATH "${CMAKE_BINARY_DIR}/tinyusb")
 
 pico_sdk_init()
 
-set(BRAINWAVE_VERSION "0.3.7")
+set(BRAINWAVE_VERSION "0.3.8")
 set(BRAINWAVE_TEST_HANG_AFTER_MS 0 CACHE STRING "Test only: stop feeding the watchdog after this many milliseconds (0 is off)")
 option(BRAINWAVE_DEBUG_FORWARD "Forward TCP 2100 on the WiFi address to the Brain's Debug Agent from boot" OFF)
 

@@ -3,6 +3,7 @@
 
 #include <cstring>
 
+#include "lwip/dhcp.h"
 #include "lwip/dns.h"
 #include "lwip/netif.h"
 #include "pico/cyw43_arch.h"
@@ -56,6 +57,15 @@ size_t auth_attempt_index = 0;
 
 netif *station() {
     return &cyw43_state.netif[CYW43_ITF_STA];
+}
+
+void leave_network() {
+    cyw43_wifi_leave(&cyw43_state, CYW43_ITF_STA);
+    netif *interface = station();
+    netif_set_link_down(interface);
+    dhcp_release_and_stop(interface);
+    netif_set_addr(interface, IP4_ADDR_ANY4, IP4_ADDR_ANY4, IP4_ADDR_ANY4);
+    dhcp_start(interface);
 }
 
 int scan_result_received(void *, const cyw43_ev_scan_result_t *result) {
@@ -193,7 +203,7 @@ void start_attempt(uint32_t now) {
 }
 
 void connect_to(const settings::Network &network, uint32_t now) {
-    cyw43_wifi_leave(&cyw43_state, CYW43_ITF_STA);
+    leave_network();
     set_outside(0);
     target = network;
     plan_auth(target, scanned_entry(target.ssid, target.ssid_length));
@@ -215,7 +225,7 @@ void choose_known_network(uint32_t now) {
 
 void attempt_failed(uint32_t now, int status) {
     log_line("wifi: connection failed (%d)", status);
-    cyw43_wifi_leave(&cyw43_state, CYW43_ITF_STA);
+    leave_network();
     if (++auth_attempt_index < auth_attempt_count) {
         start_attempt(now);
         return;
@@ -262,7 +272,7 @@ void refresh_radio(uint32_t now) {
 }
 
 void run_disconnect() {
-    cyw43_wifi_leave(&cyw43_state, CYW43_ITF_STA);
+    leave_network();
     set_outside(0);
     scan_for_connect = false;
     state = State::disconnected;
@@ -273,7 +283,7 @@ bool run_forget(const uint8_t *ssid, size_t ssid_length) {
     bool removed = settings::forget(ssid, ssid_length);
     if ((state == State::connected || state == State::connecting) && target.ssid_length == ssid_length &&
         !memcmp(target.ssid, ssid, ssid_length)) {
-        cyw43_wifi_leave(&cyw43_state, CYW43_ITF_STA);
+        leave_network();
         set_outside(0);
         state = settings::count() ? State::not_found : State::idle;
         next_action_ms = to_ms_since_boot(get_absolute_time()) + reconnect_delay_ms;
@@ -380,7 +390,7 @@ void task(uint32_t now) {
         if (cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA) != CYW43_LINK_UP) {
             log_line("wifi: link lost");
             set_outside(0);
-            cyw43_wifi_leave(&cyw43_state, CYW43_ITF_STA);
+            leave_network();
             state = State::not_found;
             next_action_ms = now + reconnect_delay_ms;
         }
