@@ -2,9 +2,9 @@
 
 ## Power
 
-The Brain attaches only when it sees voltage on VBUS. With VSYS bridged to VBUS the battery voltage (about 3.9 V) is enough: the USB PHY's own B-session comparator accepts it, although the power block's VBUSVALID threshold (`HW_POWER_5VCTRL.VBUSVALID_TRSH`) is set to 4.0 V by Sharp's CE. A flaky bridge drops the link the moment it opens.
+The Brain attaches only when it sees voltage on VBUS. With VSYS bridged to VBUS the battery voltage (about 3.9 V) is enough: the USB PHY's own B-session comparator accepts it, although the power block's VBUSVALID threshold (`HW_POWER_5VCTRL.VBUSVALID_TRSH`) is set to 4.0 V by Sharp's CE.
 
-While VBUS is present the i.MX28 runs itself from its 4.2 V rail (`DCDC4P2`) and charges its battery, so it draws heavily on Brainwave's LiPo. `bwpower.dll`, a stream driver the app loads from the card, performs NXP's 5 V to battery handoff (clears `DCDC4P2.ENABLE_DCDC` and `ENABLE_4P2`, sets `5VCTRL.PWD_CHARGE_4P2` and `CHARGE.PWD_BATTCHRG`). Tested on a laptop's 5 V: no reset, the battery voltage drops under load as expected, and Sharp's driver leaves it alone until the next plug event (it only enables VBUSVALID, VDD5V droop and power switch interrupts). The app re-applies it every 2 s.
+While VBUS is present the i.MX28 runs itself from its 4.2 V rail (`DCDC4P2`) and charges its battery, so it draws heavily on Brainwave's LiPo. `bwpower.dll`, a stream driver the app loads from the card, performs NXP's 5 V to battery handoff (clears `DCDC4P2.ENABLE_DCDC` and `ENABLE_4P2`, sets `5VCTRL.PWD_CHARGE_4P2` and `CHARGE.PWD_BATTCHRG`). Tested on a laptop's 5 V: no reset, the battery voltage drops under load, and Sharp's driver leaves it alone until the next plug event (it only enables VBUSVALID, VDD5V droop and power switch interrupts). The app re-applies it every 2 s.
 
 The driver can also lower `VBUSVALID_TRSH` to 2.9 V and route it to the USB B-session (`VBUSVALID_TO_B`), so USB keeps working down to LiPo cut-off. This is off by default and untested.
 

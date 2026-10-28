@@ -14,7 +14,7 @@ A USB WiFi module for the SHARP Brain (PW-SH1, PW-SH2) running Windows CE from a
 
 The Brain only sees a cable when there is voltage on VBUS, and the Pico LiPo 2 XL W does not put its battery on its USB-C port. Bridge VBUS to VSYS with the wire, **only while Brainwave is used with the Brain**.
 
-**Remove the wire before plugging Brainwave into a computer, charger or anything else that supplies USB power.** With the bridge in place, that 5 V goes straight onto VSYS and the battery side of the board, bypassing its power path. That will probably damage the board, the battery or the other device's port. Flash it with the wire out.
+**Remove the wire before plugging Brainwave into a computer, charger or anything else that supplies USB power.** With the bridge in place, that 5 V goes straight onto VSYS and the battery side of the board, bypassing its power path. That will probably damage the board, the battery or the other device's port.
 
 ## Building and Flashing
 

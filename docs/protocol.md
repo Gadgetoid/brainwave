@@ -1,17 +1,17 @@
 # Control Protocol
 
-The Brainwave app on the Brain configures the module over the USB network link. The module listens on TCP port 2350 at its own address on that link, `10.88.0.1`, which is also the Brain's default gateway.
+The module listens on TCP port 2350 at `10.88.0.1`, its address on the USB link and the Brain's default gateway.
 
-One command per connection: the client connects, sends one line ending in `\n`, and reads lines until the last line, which is `ok` or `error MESSAGE`. Clients stop reading at that line; they do not wait for the connection to close.
+One command per connection: send a line ending in `\n`, then read lines up to `ok` or `error MESSAGE`. Stop reading there; do not wait for the connection to close.
 
-SSIDs and passwords are sent as lowercase hex of their bytes (SSIDs are usually UTF-8), so they need no quoting. An empty value is `-`.
+SSIDs and passwords are lowercase hex of their bytes. An empty value is `-`.
 
 ## Commands
 
 ### `status`
 
 ```
-version=0.2.0
+version=0.3.4
 wifi=connected
 ssid=486f6d65
 security=wpa2
@@ -40,14 +40,14 @@ ok
 - `mac`: the module's WiFi MAC address.
 - `battery`: the module's battery (VBAT) in millivolts.
 - `uptime`: seconds since the module started.
-- `debug-forward`: `on` when TCP port 2100 on the module's WiFi address is forwarded to the Brain (Debug Agent).
+- `debug-forward`: `on` while `debug-forward` is on.
 - `slot`: the firmware slot running, `A` or `B` (`unpartitioned` without a partition table).
 
 Clients ignore keys they do not know.
 
 ### `scan`
 
-Scans (about 3 s) and lists one line per network, strongest first, one entry per SSID, hidden networks left out:
+Takes about 3 s. One line per SSID, strongest first, hidden networks left out:
 
 ```
 ap -48 wpa2 6 1 486f6d65
@@ -55,15 +55,15 @@ ap -71 open 11 0 436166c3a9
 ok
 ```
 
-Fields: signal in dBm, security (`open`, `wep`, `wpa`, `wpa2`), channel, saved (`1` if a password or open network is saved for it), SSID.
+Fields: signal in dBm, security (`open`, `wep`, `wpa`, `wpa2`), channel, saved (`1` or `0`), SSID.
 
 ### `join SSID PASSWORD`
 
-Saves the network with its password (replacing a saved one with the same SSID, at most 8 kept, the least recently used dropped) and starts connecting. `PASSWORD` is `-` for an open network. Returns `ok` at once; poll `status` for the result.
+Saves the network and starts connecting; `PASSWORD` is `-` for an open network. Up to 8 networks are kept, the least recently used dropped first. Returns `ok` at once; poll `status` for the result.
 
 ### `connect SSID`
 
-Connects to a saved network with its saved password. `error not saved` if it is not saved.
+Connects to a saved network, or answers `error not saved`.
 
 ### `disconnect`
 
@@ -71,15 +71,15 @@ Leaves the current network and stays off WiFi until `join` or `connect`, or the 
 
 ### `debug-forward on|off`
 
-Forwards TCP port 2100 on the module's WiFi address to the Brain's port 2100, so `brain-debug --device MODULE_IP` reaches Debug Agent (Network) from the WiFi network. Off at start unless the firmware was built with `BRAINWAVE_DEBUG_FORWARD`. Anyone on the WiFi network can then write files to the Brain and run programs on it.
+Forwards TCP port 2100 on the module's WiFi address to the Brain's Debug Agent. Off at start unless built with `BRAINWAVE_DEBUG_FORWARD`. While on, anyone on the WiFi network can write files to the Brain and run programs on it.
 
 ### `update SIZE SHA256`
 
-Writes a new firmware image (`brainwave.bin`, SIZE bytes, SHA256 in hex) into the slot that is not running. The module answers `ready` (or `error ...`), the client then sends exactly SIZE bytes on the same connection, and the module answers `ok` once the image is written and its hash verified in flash, or `error ...`. About 1.5 s after `ok` it restarts into the new image on trial; the new firmware keeps itself after 30 s of running. If it hangs or crashes before then, the watchdog restarts it and the boot ROM goes back to the previous image. `tools/push-firmware.py` does this from a computer.
+Writes `brainwave.bin` (SIZE bytes, SHA256 in hex) into the slot that is not running. The module answers `ready`, the client sends the SIZE bytes on the same connection, and the module answers `ok` once the image is written and verified in flash. 3 s later it restarts into the new image on trial and keeps it after 30 s of running; a hang or crash before then puts the previous image back. `tools/push-firmware.py` is a reference client.
 
 ### `forget SSID`
 
-Removes a saved network and disconnects if it is the current one.
+Removes a saved network, disconnecting if it is the current one.
 
 ### `known`
 
@@ -92,4 +92,4 @@ ok
 
 ### `log`
 
-The module's recent log lines (a 4 KB ring), oldest first, then `ok`.
+The last 4 KB of the module's log, oldest first.
