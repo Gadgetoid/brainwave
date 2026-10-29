@@ -23,6 +23,8 @@ constexpr uint32_t tcp_idle_ms = 30 * 60 * 1000;
 constexpr uint32_t tcp_closing_ms = 20 * 1000;
 constexpr uint32_t udp_idle_ms = 120 * 1000;
 constexpr uint32_t icmp_idle_ms = 30 * 1000;
+constexpr uint32_t ssdp_address = 0xeffffffa;
+constexpr uint16_t ssdp_port = 1900;
 
 struct Header {
     size_t header_bytes;
@@ -82,6 +84,11 @@ bool decrement_ttl(uint8_t *packet) {
     packet[8]--;
     adjust_checksum16(packet + 10, old_word, read16(packet + 8));
     return true;
+}
+
+bool is_ssdp_search(const uint8_t *packet, const Header &header) {
+    return header.protocol == protocol_udp && !header.later_fragment && read32(packet + 16) == ssdp_address &&
+        header.header_bytes + 8 <= header.total && read16(packet + header.header_bytes + 2) == ssdp_port;
 }
 
 uint32_t idle_limit(uint8_t protocol, bool closing) {
@@ -273,7 +280,8 @@ Verdict Translator::outbound(uint8_t *packet, size_t length, uint32_t now_ms) {
     }
     uint32_t source = read32(packet + 12);
     uint32_t destination = read32(packet + 16);
-    if (is_inside(destination) || destination == 0xffffffff || (destination >> 28) == 0xe) {
+    bool ssdp = is_ssdp_search(packet, header);
+    if (is_inside(destination) || destination == 0xffffffff || ((destination >> 28) == 0xe && !ssdp)) {
         return Verdict::local;
     }
     if (!outside || destination == outside) {
@@ -306,7 +314,7 @@ Verdict Translator::outbound(uint8_t *packet, size_t length, uint32_t now_ms) {
         checksum_field = l4 + 2;
     }
 
-    if (!decrement_ttl(packet)) {
+    if (!ssdp && !decrement_ttl(packet)) {
         return Verdict::drop;
     }
     uint16_t inside_port = read16(port_field);

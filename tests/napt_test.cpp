@@ -1,4 +1,4 @@
-// Host tests for the address translator: UDP, TCP, ICMP echo and errors, port remapping, expiry and forwards.
+// Host tests for the address translator: UDP, TCP, ICMP echo and errors, SSDP searches, port remapping, expiry and forwards.
 #include <cstdio>
 #include <cstring>
 #include <vector>
@@ -184,6 +184,29 @@ void test_icmp_echo_and_error() {
     check(l4_checksum_valid(error), "icmp error checksum");
 }
 
+void test_ssdp_search() {
+    Translator translator = make_translator();
+    constexpr uint32_t ssdp = 0xeffffffa;
+    constexpr uint32_t media_server = 0xc0a8013f;
+    std::vector<uint8_t> search = udp(brain, 49200, ssdp, 1900, "M-SEARCH * HTTP/1.1");
+    search[8] = 1;
+    write16(&search[10], 0);
+    write16(&search[10], compute_checksum(search.data(), 20));
+    check(translator.outbound(search.data(), search.size(), 0) == Verdict::forward, "ssdp search forwarded");
+    check(read32(&search[12]) == outside, "ssdp search source rewritten");
+    check(search[8] == 1, "ssdp search ttl kept");
+    check(ip_checksum_valid(search.data()), "ssdp search ip checksum");
+    check(l4_checksum_valid(search), "ssdp search checksum");
+
+    std::vector<uint8_t> reply = udp(media_server, 1900, outside, read16(&search[20]), "HTTP/1.1 200 OK");
+    check(translator.inbound(reply.data(), reply.size(), 10) == Verdict::forward, "ssdp reply from a server forwarded");
+    check(read32(&reply[16]) == brain && read16(&reply[22]) == 49200, "ssdp reply destination restored");
+    check(l4_checksum_valid(reply), "ssdp reply checksum");
+
+    std::vector<uint8_t> other = udp(brain, 5353, 0xe00000fb, 5353, "mdns");
+    check(translator.outbound(other.data(), other.size(), 0) == Verdict::local, "other multicast is local");
+}
+
 void test_local_and_drop() {
     Translator translator = make_translator();
     std::vector<uint8_t> to_router = udp(brain, 68, router, 67, "dhcp");
@@ -228,6 +251,7 @@ int main() {
     test_udp_zero_checksum();
     test_tcp_and_remap();
     test_icmp_echo_and_error();
+    test_ssdp_search();
     test_local_and_drop();
     if (failures) {
         printf("%d failures\n", failures);
