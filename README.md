@@ -30,7 +30,7 @@ git -C firmware/pico-sdk submodule update --init lib/cyw43-driver lib/lwip
 make test ce firmware
 ```
 
-Needs `arm-none-eabi-gcc`, CMake, Ninja, Python 3, Node and [jornada-72x-tools](https://github.com/Gadgetoid/jornada-72x-tools) (set `JORNADA_TOOLCHAIN` to its path).
+Needs `arm-none-eabi-gcc`, CMake, Ninja, Python 3, [grimace](https://github.com/grimace-sdk/grimace) (set `GRIMACE` to its path) and an LLVM from [llvm-builds](https://github.com/grimace-sdk/llvm-builds/releases) (set `GRIMACE_LLVM_ROOT` to it, unless grimace has an `llvm` link). `tools/ce-toolchain.sh DIRECTORY` fetches both at the commits CI uses.
 
 First flash, wire out, holding BOOT while plugging in:
 

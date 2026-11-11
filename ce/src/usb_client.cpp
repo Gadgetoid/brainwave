@@ -6,7 +6,6 @@
 
 namespace {
 
-constexpr DWORD device_search_by_guid = 3;
 constexpr DWORD ioctl_ufn_get_current_client = 0x0022000c;
 constexpr DWORD ioctl_ufn_change_current_client = 0x00220010;
 constexpr DWORD ufn_client_name_bytes = 0x100;
@@ -17,16 +16,6 @@ constexpr DWORD rndis_vendor = 0x045e;
 constexpr DWORD rndis_product = 0x0302;
 constexpr DWORD rndis_sharing_product = 0x0303;
 
-struct device_information {
-    DWORD size;
-    HANDLE device;
-    HANDLE parent;
-    wchar_t legacy_name[6];
-    wchar_t device_key[MAX_PATH];
-    wchar_t device_name[MAX_PATH];
-    wchar_t bus_name[MAX_PATH];
-};
-
 struct interface_guid {
     DWORD data1;
     WORD data2;
@@ -35,13 +24,6 @@ struct interface_guid {
 };
 
 const interface_guid usb_function_bus = { 0xe2bdc372, 0x598f, 0x4619, { 0xbc, 0x50, 0x54, 0xb3, 0xf7, 0x84, 0x8d, 0x35 } };
-
-}
-
-extern "C" HANDLE FindFirstDevice(DWORD search_type, const void *search_parameter, device_information *information);
-extern "C" BOOL FindClose(HANDLE search);
-
-namespace {
 
 void copy_text(wchar_t *destination, const wchar_t *source, DWORD characters) {
     DWORD index = 0;
@@ -92,15 +74,15 @@ LONG register_ndis_driver(const wchar_t *path, bool no_device) {
 }
 
 HANDLE open_function_bus() {
-    device_information *information = static_cast<device_information *>(LocalAlloc(LPTR, sizeof(device_information)));
+    DEVMGR_DEVICE_INFORMATION *information = static_cast<DEVMGR_DEVICE_INFORMATION *>(LocalAlloc(LPTR, sizeof(DEVMGR_DEVICE_INFORMATION)));
     HANDLE bus = INVALID_HANDLE_VALUE;
     if (!information) {
         return INVALID_HANDLE_VALUE;
     }
-    information->size = sizeof(device_information);
-    HANDLE search = FindFirstDevice(device_search_by_guid, &usb_function_bus, information);
+    information->dwSize = sizeof(DEVMGR_DEVICE_INFORMATION);
+    HANDLE search = FindFirstDevice(DeviceSearchByGuid, &usb_function_bus, information);
     if (search != INVALID_HANDLE_VALUE) {
-        bus = CreateFileW(information->bus_name, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
+        bus = CreateFileW(information->szBusName, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
         FindClose(search);
     }
     LocalFree(information);

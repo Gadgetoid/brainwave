@@ -15,9 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
       - name: Submodules
         run: |
           git submodule update --init
@@ -31,7 +28,7 @@ jobs:
       - name: CE toolchain
         run: sh tools/ce-toolchain.sh "$RUNNER_TEMP/ce-toolchain"
       - name: CE app
-        run: make ce JORNADA_TOOLCHAIN="$RUNNER_TEMP/ce-toolchain/jornada-72x-tools" JORNADA_LLVM_ROOT="$RUNNER_TEMP/ce-toolchain/llvm"
+        run: make ce GRIMACE="$RUNNER_TEMP/ce-toolchain/grimace" GRIMACE_LLVM_ROOT="$RUNNER_TEMP/ce-toolchain/llvm"
       - name: Firmware
         run: make firmware
       - name: Check the tag matches the firmware version

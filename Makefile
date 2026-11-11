@@ -8,8 +8,8 @@ VERSION = $(shell sed -n 's/^set(BRAINWAVE_VERSION "\(.*\)")/\1/p' firmware/CMak
 all: ce firmware
 
 ce:
-	@test -n "$(JORNADA_TOOLCHAIN)" || { echo "Set JORNADA_TOOLCHAIN to the jornada-72x-tools directory"; exit 1; }
-	cmake -S ce -B build/ce -G Ninja -DCMAKE_TOOLCHAIN_FILE=$(JORNADA_TOOLCHAIN)/cmake/jornada-ce.cmake -DJORNADA_TOOLCHAIN=$(JORNADA_TOOLCHAIN) $(if $(JORNADA_LLVM_ROOT),-DJORNADA_LLVM_ROOT=$(JORNADA_LLVM_ROOT))
+	@test -n "$(GRIMACE)" || { echo "Set GRIMACE to the grimace directory"; exit 1; }
+	cmake -S ce -B build/ce -G Ninja -DCMAKE_TOOLCHAIN_FILE=$(GRIMACE)/cmake/toolchain.cmake -DGRIMACE_ARCH=arm -DGRIMACE_CE_VERSION=6 -DGRIMACE_PLATFORM=brain $(if $(GRIMACE_LLVM_ROOT),-DGRIMACE_LLVM_ROOT=$(GRIMACE_LLVM_ROOT))
 	cmake --build build/ce
 
 firmware:
