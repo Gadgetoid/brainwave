@@ -4,9 +4,9 @@ set -eu
 
 directory=${1:?Usage: tools/ce-toolchain.sh DIRECTORY}
 grimace_repository=https://github.com/grimace-sdk/grimace.git
-grimace_commit=5120250dd63d8e5c8c1bae3335998ead9d1fc810
-llvm_url=https://github.com/grimace-sdk/llvm-builds/releases/download/v3/velo-llvm-v3-linux-x86_64.tar.xz
-llvm_sha256=c3f0b67e22105ef68bbb71d0a316b268ef3e44e5b83aab93b0f9a071d2706b77
+grimace_commit=d28782e6588e640b9c32eb8f91fe56d97609c10e
+llvm_url=https://github.com/grimace-sdk/llvm-builds/releases/download/v6/llvm-v6-linux-x86_64.tar.xz
+llvm_sha256=7a694afcc9a2b5d16a0f93fd5b13e7dba3e7ff15f0b2d31118356fa51cfc9254
 
 mkdir -p "$directory"
 if [ ! -d "$directory/grimace/.git" ]; then
