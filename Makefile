@@ -1,6 +1,6 @@
 # Builds the CE app, the firmware and the host tests.
 
-.PHONY: all ce firmware partitions package push test version clean
+.PHONY: all ce check-imports firmware partitions package push test version clean
 
 PICOTOOL ?= picotool
 VERSION = $(shell sed -n 's/^set(BRAINWAVE_VERSION "\(.*\)")/\1/p' firmware/CMakeLists.txt)
@@ -11,6 +11,11 @@ ce:
 	@test -n "$(GRIMACE)" || { echo "Set GRIMACE to the grimace directory"; exit 1; }
 	cmake -S ce -B build/ce -G Ninja -DCMAKE_TOOLCHAIN_FILE=$(GRIMACE)/cmake/toolchain.cmake -DGRIMACE_ARCH=arm -DGRIMACE_CE_VERSION=6 -DGRIMACE_PLATFORM=brain $(if $(GRIMACE_LLVM_ROOT),-DGRIMACE_LLVM_ROOT=$(GRIMACE_LLVM_ROOT))
 	cmake --build build/ce
+
+check-imports:
+	@test -n "$(GRIMACE)" || { echo "Set GRIMACE to the grimace directory"; exit 1; }
+	python3 $(GRIMACE)/tests/check-imports.py build/ce --arch arm --version 6 --device pwsh2
+	python3 $(GRIMACE)/tests/check-imports.py build/ce --arch arm --version 6 --device pwa7300
 
 firmware:
 	cmake -S firmware -B build/firmware -G Ninja

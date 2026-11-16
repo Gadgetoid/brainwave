@@ -29,6 +29,8 @@ jobs:
         run: sh tools/ce-toolchain.sh "$RUNNER_TEMP/ce-toolchain"
       - name: CE app
         run: make ce GRIMACE="$RUNNER_TEMP/ce-toolchain/grimace" GRIMACE_LLVM_ROOT="$RUNNER_TEMP/ce-toolchain/llvm"
+      - name: CE imports
+        run: make check-imports GRIMACE="$RUNNER_TEMP/ce-toolchain/grimace"
       - name: Firmware
         run: make firmware
       - name: Check the tag matches the firmware version

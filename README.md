@@ -30,7 +30,7 @@ git -C firmware/pico-sdk submodule update --init lib/cyw43-driver lib/lwip
 make test ce firmware
 ```
 
-Needs `arm-none-eabi-gcc`, CMake, Ninja, Python 3, [grimace](https://github.com/grimace-sdk/grimace) (set `GRIMACE` to its path) and an LLVM from [llvm-builds](https://github.com/grimace-sdk/llvm-builds/releases) v6 or later (set `GRIMACE_LLVM_ROOT` to it, unless grimace has an `llvm` link). `tools/ce-toolchain.sh DIRECTORY` fetches both at the commits CI uses.
+Needs `arm-none-eabi-gcc`, CMake, Ninja, Python 3, [grimace](https://github.com/grimace-sdk/grimace) (set `GRIMACE` to its path) and an LLVM from [llvm-builds](https://github.com/grimace-sdk/llvm-builds/releases) v6 or later (set `GRIMACE_LLVM_ROOT` to it, unless grimace has an `llvm` link). `tools/ce-toolchain.sh DIRECTORY` fetches both at the commits CI uses. `make check-imports` checks the CE app only imports what the PW-SH2 and PW-A7300 ROMs export.
 
 First flash, wire out, holding BOOT while plugging in:
 
