@@ -33,6 +33,7 @@ struct app_model {
     wchar_t update_note[128];
     char update_from_slot[16];
     DWORD update_tick;
+    wchar_t clock_note[128];
 };
 
 extern app_model model;

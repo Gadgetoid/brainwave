@@ -14,6 +14,7 @@ constexpr UINT log_message = WM_APP + 5;
 constexpr UINT tray_message = WM_APP + 6;
 constexpr UINT show_message = WM_APP + 7;
 constexpr UINT update_message = WM_APP + 8;
+constexpr UINT clock_message = WM_APP + 9;
 
 constexpr int command_bytes = 256;
 constexpr int module_log_bytes = 6144;

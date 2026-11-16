@@ -10,7 +10,7 @@ execute_process(
 
 grimace_add_executable(brainwave ICON "${BRAINWAVE_ICON}"
     src/main.cpp src/app.cpp src/usb_activation.cpp src/power_policy.cpp src/update_flow.cpp src/usb_client.cpp src/module.cpp src/text.cpp src/power.cpp src/resume.cpp src/worker.cpp src/model.cpp
-    src/settings.cpp src/tray.cpp src/ui_style.cpp src/ui_networks.cpp src/ui_details.cpp src/ui_advanced.cpp src/ui_password.cpp src/sha256.cpp src/firmware_update.cpp)
+    src/settings.cpp src/tray.cpp src/ui_style.cpp src/ui_networks.cpp src/ui_details.cpp src/ui_advanced.cpp src/ui_password.cpp src/sha256.cpp src/firmware_update.cpp src/sntp.cpp src/clock_sync.cpp)
 target_compile_options(brainwave PRIVATE -mcpu=arm926ej-s -Wall -Werror -Wno-unused-parameter)
 target_compile_definitions(brainwave PRIVATE UNICODE _UNICODE UNDER_CE WINCE _WINDOWS GRIMACE_ALL_DECLARATIONS)
 target_link_libraries(brainwave PRIVATE grimace::commctrl grimace::winsock)

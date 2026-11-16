@@ -24,4 +24,5 @@ Notes
 - The Brain gets 10.88.0.2; Brainwave is 10.88.0.1.
 - Advanced > Brain power runs the Brain from its own battery while Brainwave is attached.
 - Advanced > Switch USB to Storage switches the Brain's USB back to mass storage.
+- Advanced > Clock sets the Brain's clock from an internet time server, pool.ntp.org unless you change it, when Brainwave joins a network and every 3 hours while it stays connected. The time zone comes from the Brain's own settings. Set Now sets it straight away, and brainwave.log records the old and new time.
 - Saved WiFi passwords are stored unencrypted in Brainwave's flash.

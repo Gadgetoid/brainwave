@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "app.h"
+#include "clock_sync.h"
 #include "firmware_update.h"
 #include "model.h"
 #include "power_policy.h"
@@ -210,6 +211,7 @@ void handle_status(module_status *status) {
     }
     model_add_history(model_rssi());
     update_flow_watch_restart();
+    clock_sync_watch();
     power_policy_update();
     refresh_all();
 }
@@ -283,6 +285,12 @@ LRESULT CALLBACK window_procedure(HWND window, UINT message, WPARAM wparam, LPAR
     case show_message:
         show_window();
         return 0;
+    case clock_message: {
+        clock_report *report = reinterpret_cast<clock_report *>(lparam);
+        clock_sync_report(*report);
+        LocalFree(report);
+        return 0;
+    }
     case status_message: {
         module_status *status = reinterpret_cast<module_status *>(lparam);
         handle_status(status);
@@ -387,6 +395,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPWSTR command_line, int) {
         append_log(L"winsock unavailable");
     }
     lstrcpyW(model.power_description, L"Checking how the Brain is powered...");
+    clock_sync_load();
 
     RECT work = { 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN) };
     SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0);

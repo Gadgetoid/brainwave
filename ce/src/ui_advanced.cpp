@@ -4,6 +4,7 @@
 #include <commctrl.h>
 
 #include "app.h"
+#include "clock_sync.h"
 #include "firmware_update.h"
 #include "model.h"
 #include "settings.h"
@@ -23,6 +24,9 @@ constexpr int quit_button_id = 415;
 constexpr int low_vbus_check_id = 416;
 constexpr int debug_check_id = 417;
 constexpr int firmware_button_id = 418;
+constexpr int clock_check_id = 419;
+constexpr int clock_server_id = 420;
+constexpr int clock_button_id = 421;
 constexpr int log_characters = module_log_bytes;
 
 constexpr const wchar_t *power_group_label = L"Brain power";
@@ -30,6 +34,10 @@ constexpr const wchar_t *debug_group_label = L"Debugging";
 constexpr const wchar_t *usb_group_label = L"USB";
 constexpr const wchar_t *log_group_label = L"Module log";
 constexpr const wchar_t *firmware_group_label = L"Module firmware";
+constexpr const wchar_t *clock_group_label = L"Clock";
+constexpr const wchar_t *clock_label = L"Set the clock from the internet";
+constexpr const wchar_t *clock_server_label = L"Server:";
+constexpr const wchar_t *clock_button_label = L"Set Now";
 constexpr const wchar_t *firmware_button_label = L"Update Module Firmware";
 constexpr const wchar_t *battery_label = L"Power the Brain from its own battery";
 constexpr const wchar_t *low_vbus_label = L"Keep USB working down to 3.0 V";
@@ -62,6 +70,12 @@ HWND firmware_file = nullptr;
 HWND firmware_progress = nullptr;
 HWND firmware_note = nullptr;
 HWND firmware_button = nullptr;
+HWND clock_group = nullptr;
+HWND clock_check = nullptr;
+HWND clock_server_text = nullptr;
+HWND clock_server_edit = nullptr;
+HWND clock_button = nullptr;
+HWND clock_note = nullptr;
 int shown_progress = -1;
 bool battery_wanted = true;
 bool low_vbus_wanted = false;
@@ -113,7 +127,21 @@ void layout(int width, int height) {
     top = group_top + style.line_height;
     top = place_check(debug_check, debug_label, inner_left, top, inner_width);
     top = place_static(debug_text, debug_warning, inner_left, top, inner_width);
-    close_group(debug_group, left, group_top, column_width, top);
+    top = close_group(debug_group, left, group_top, column_width, top);
+
+    group_top = top + gap / 2;
+    top = group_top + style.line_height;
+    top = place_check(clock_check, clock_label, inner_left, top, inner_width);
+    int server_label_width = measure_text_width(clock_server_text, clock_server_label) + style.margin;
+    int clock_button_width = button_width_for(clock_button, clock_button_label);
+    int edit_left = inner_left + server_label_width;
+    int edit_width = inner_width - server_label_width - clock_button_width - style.margin;
+    MoveWindow(clock_server_text, inner_left, top + (style.button_height - style.line_height) / 2, server_label_width, style.line_height, TRUE);
+    MoveWindow(clock_server_edit, edit_left, top, edit_width, style.button_height, TRUE);
+    MoveWindow(clock_button, edit_left + edit_width + style.margin, top, clock_button_width, style.button_height, TRUE);
+    top += style.button_height + style.margin / 2;
+    MoveWindow(clock_note, inner_left, top, inner_width, style.line_height, TRUE);
+    close_group(clock_group, left, group_top, column_width, top + style.line_height);
     place_button(quit_button, quit_label, left, height - gap - style.button_height);
 
     int right = gap * 2 + column_width;
@@ -185,6 +213,19 @@ LRESULT CALLBACK advanced_procedure(HWND window, UINT message, WPARAM wparam, LP
         case firmware_button_id:
             PostMessageW(main_window, WM_COMMAND, advanced_firmware_command, 0);
             break;
+        case clock_check_id:
+            clock_sync_set_enabled(SendMessageW(clock_check, BM_GETCHECK, 0, 0) == BST_CHECKED);
+            break;
+        case clock_server_id:
+            if (HIWORD(wparam) == EN_CHANGE) {
+                wchar_t server[clock_server_characters];
+                GetWindowTextW(clock_server_edit, server, clock_server_characters);
+                clock_sync_set_server(server);
+            }
+            break;
+        case clock_button_id:
+            clock_sync_now();
+            break;
         }
         return 0;
     }
@@ -211,6 +252,14 @@ HWND advanced_create(HWND parent) {
     firmware_note = create_control(panel, L"STATIC", L"", SS_LEFT | SS_NOPREFIX, 0);
     firmware_button = create_control(panel, L"BUTTON", firmware_button_label, BS_PUSHBUTTON | WS_TABSTOP, firmware_button_id);
     firmware_progress = create_control(panel, PROGRESS_CLASSW, L"", 0, 0);
+    clock_group = create_control(panel, L"BUTTON", clock_group_label, BS_GROUPBOX, 0);
+    clock_check = create_control(panel, L"BUTTON", clock_label, BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP, clock_check_id);
+    SendMessageW(clock_check, BM_SETCHECK, clock_sync_enabled() ? BST_CHECKED : BST_UNCHECKED, 0);
+    clock_server_text = create_control(panel, L"STATIC", clock_server_label, SS_LEFT | SS_NOPREFIX, 0);
+    clock_server_edit = create_control(panel, L"EDIT", clock_sync_server(), WS_BORDER | ES_AUTOHSCROLL | WS_TABSTOP, clock_server_id);
+    SendMessageW(clock_server_edit, EM_LIMITTEXT, clock_server_characters - 1, 0);
+    clock_button = create_control(panel, L"BUTTON", clock_button_label, BS_PUSHBUTTON | WS_TABSTOP, clock_button_id);
+    clock_note = create_control(panel, L"STATIC", L"", SS_LEFT | SS_NOPREFIX, 0);
     SendMessageW(firmware_progress, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
     battery_wanted = settings_read(battery_setting, 1) != 0;
     battery_check = create_control(panel, L"BUTTON", battery_label, BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP, battery_check_id);
@@ -262,6 +311,8 @@ void update_firmware_controls() {
 void advanced_update() {
     update_firmware_controls();
     set_text_if_changed(power_description, model.power_description);
+    set_text_if_changed(clock_note, model.clock_note);
+    EnableWindow(clock_button, clock_sync_can_start());
     bool reachable = model.status.reachable;
     EnableWindow(debug_check, reachable);
     UINT wanted = reachable && model.status.debug_forward ? BST_CHECKED : BST_UNCHECKED;
